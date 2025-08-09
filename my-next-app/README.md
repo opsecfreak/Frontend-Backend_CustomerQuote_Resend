@@ -154,7 +154,15 @@ The application uses a `FormSubmission` model with the following fields:
 model FormSubmission {
   id             String   @id @default(cuid())
   createdAt      DateTime @default(now())
-  summary        String   // Auto-generated summary
+  updatedAt      DateTime @updatedAt
+  
+  // AI-Generated Summary
+  aiSummary      String?  // AI-generated detailed analysis of the submission
+  
+  // Basic summary (fallback)
+  summary        String   // Simple summary for display
+  
+  // Client Information
   fromemail      String   // Client email (required)
   brandName      String?  // Client's brand name
   companyName    String?  // Company name
@@ -169,21 +177,32 @@ model FormSubmission {
 }
 ```
 
+### AI Summary Feature
+
+The system now automatically generates intelligent summaries using OpenAI's GPT-4o-mini model:
+
+- **Automatic Analysis**: Each form submission is analyzed by AI to extract key insights
+- **Professional Summaries**: AI provides 2-3 sentence summaries capturing business context, needs, and potential value
+- **Fallback Handling**: If AI processing fails, a simple fallback summary is generated
+- **Email Integration**: AI summaries are included in email notifications for quick review
+
 ## 📧 Email System
 
 ### How It Works
 
 1. **Form Submission**: User fills out the quote request form
 2. **Validation**: Data is validated using Zod schemas
-3. **Database Storage**: Form data is saved to PostgreSQL
-4. **Email Notification**: HTML email sent to `mobiletechspecialists@gmail.com`
+3. **AI Analysis**: OpenAI generates intelligent summary of the request
+4. **Database Storage**: Form data and AI summary are saved to PostgreSQL
+5. **Email Notification**: HTML email with AI insights sent to `mobiletechspecialists@gmail.com`
 
 ### Email Template Features
 
 - **Professional HTML Design** with modern styling
+- **AI-Powered Insights**: Intelligent summary section with business analysis
 - **Organized Sections**:
   - Header with submission ID and timestamp
-  - Summary of the request
+  - AI-generated summary and analysis
   - Complete client information
   - Project details and requirements
 - **Responsive Design** that works on all devices

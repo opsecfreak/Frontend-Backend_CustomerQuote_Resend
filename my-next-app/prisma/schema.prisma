@@ -11,7 +11,12 @@ datasource db {
 model FormSubmission {
   id             String   @id @default(cuid())
   createdAt      DateTime @default(now())
-  summary        String
+  updatedAt      DateTime @updatedAt
+  // AI-Generated Summary
+  aiSummary      String?  // AI-generated detailed analysis of the submission
+  // Basic summary (fallback)
+  summary        String   // Simple summary for display
+  // Client Information
   fromemail      String
   brandName      String?
   companyName    String?

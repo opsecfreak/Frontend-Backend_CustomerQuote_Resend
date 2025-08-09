@@ -4,8 +4,66 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Function to generate AI summary using OpenAI
+async function generateAISummary(formData: any): Promise<string> {
+  try {
+    const prompt = `
+Analyze this business inquiry and provide a professional summary in 2-3 sentences that captures:
+1. The client's business context
+2. Their specific AI needs
+3. The potential impact/value
+
+Form Data:
+Company: ${formData.companyName || 'Not specified'}
+Contact: ${formData.contactPerson || 'Not specified'}
+Email: ${formData.fromemail}
+Budget: ${formData.budget || 'Not specified'}
+Urgency: ${formData.urgency || 'Not specified'}
+Requirements: ${formData.requirements || 'Not specified'}
+Questions: ${formData.questions || 'Not specified'}
+Additional Info: ${formData.additionalInfo || 'Not specified'}
+
+Provide a concise, professional summary:
+`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a business analyst specializing in AI solutions. Provide concise, professional summaries of client inquiries.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 200,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || 'AI summary generation failed';
+  } catch (error) {
+    console.error('Error generating AI summary:', error);
+    // Return a fallback summary if AI fails
+    return `${formData.companyName || 'A potential client'} is requesting AI services to improve their business operations. Budget: ${formData.budget || 'Not specified'}. Urgency: ${formData.urgency || 'Not specified'}.`;
+  }
+}
+
 // Function to create HTML email content
-function createEmailHTML(data: any, submissionId: string): string {
+function createEmailHTML(data: any, submissionId: string, aiSummary?: string): string {
   return `
     <!DOCTYPE html>
     <html>
@@ -37,6 +95,12 @@ function createEmailHTML(data: any, submissionId: string): string {
                 <div class="summary">
                     <h2>📋 Summary</h2>
                     <p>Quote request from <strong>${data.companyName || data.contactPerson || 'a potential client'}</strong> for AI solutions to boost company revenue, productivity, and workflow.</p>
+                    ${aiSummary ? `
+                    <div style="margin-top: 15px; padding: 10px; background-color: #f0f9ff; border-left: 3px solid #0ea5e9;">
+                        <h3 style="margin: 0 0 8px 0; color: #0ea5e9; font-size: 14px;">🤖 AI Analysis:</h3>
+                        <p style="margin: 0; font-style: italic; color: #1e40af;">${aiSummary}</p>
+                    </div>
+                    ` : ''}
                 </div>
                 
                 <div class="client-info">
@@ -113,9 +177,9 @@ function createEmailHTML(data: any, submissionId: string): string {
 }
 
 // Function to send email notification
-async function sendEmailNotification(data: any, submissionId: string): Promise<void> {
+async function sendEmailNotification(data: any, submissionId: string, aiSummary?: string): Promise<void> {
   try {
-    const emailHTML = createEmailHTML(data, submissionId);
+    const emailHTML = createEmailHTML(data, submissionId, aiSummary);
     
     await resend.emails.send({
       from: 'AI Services <onboarding@resend.dev>', // Using Resend's default domain
@@ -150,9 +214,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Generate AI summary
+    console.log("Generating AI summary...");
+    const aiSummary = await generateAISummary(body);
+    console.log("AI summary generated:", aiSummary);
+
     // Prepare data for database
     const dbData = {
       summary: `Quote request from ${body.companyName || body.contactPerson || 'customer'} for AI solutions`,
+      aiSummary: aiSummary, // Store the AI-generated summary
       fromemail: body.fromemail,
       brandName: body.brandName || '',
       companyName: body.companyName || '',
@@ -172,7 +242,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Send email notification
-    await sendEmailNotification(body, record.id);
+    await sendEmailNotification(body, record.id, aiSummary);
 
     return NextResponse.json({
       success: true,
