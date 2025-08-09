@@ -17,3 +17,10 @@ export interface FormSubmission {
   requirements?: string | null
   additionalInfo?: string | null
 }
+
+export interface PaginationData {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
