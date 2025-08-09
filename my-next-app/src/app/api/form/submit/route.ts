@@ -1,52 +1,133 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { Resend } from 'resend';
 
-// Simple function to create a summary from form data
-function createSummary(data: any): string {
-  const summary = `
-=== FORM SUBMISSION SUMMARY ===
-Date: ${new Date().toISOString()}
-Email: ${data.fromemail || 'Not provided'}
-Contact Person: ${data.contactPerson || 'Not provided'}
-Company: ${data.companyName || 'Not provided'}
-Website: ${data.companyWebsite || 'Not provided'}
-Phone: ${data.phoneNumber || 'Not provided'}
-Brand: ${data.brandName || 'Not provided'}
-Budget: ${data.budget || 'Not provided'}
-Urgency: ${data.urgency || 'Not provided'}
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-REQUIREMENTS:
-${data.requirements || 'Not provided'}
-
-QUESTIONS:
-${data.questions || 'Not provided'}
-
-ADDITIONAL INFO:
-${data.additionalInfo || 'Not provided'}
-
-=== END SUMMARY ===
-  `.trim();
-  
-  return summary;
+// Function to create HTML email content
+function createEmailHTML(data: any, submissionId: string): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>New Form Submission</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #0ea5e9; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+            .content { background-color: #f8f9fa; padding: 20px; border: 1px solid #dee2e6; }
+            .summary { background-color: #e3f2fd; padding: 15px; border-left: 4px solid #0ea5e9; margin: 20px 0; }
+            .client-info { background-color: white; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            .field { margin-bottom: 10px; }
+            .label { font-weight: bold; color: #495057; }
+            .value { margin-left: 10px; color: #6c757d; }
+            .footer { background-color: #6c757d; color: white; padding: 15px; text-align: center; border-radius: 0 0 8px 8px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🚀 New AI Services Quote Request</h1>
+                <p>Submission ID: ${submissionId}</p>
+                <p>Date: ${new Date().toLocaleString()}</p>
+            </div>
+            
+            <div class="content">
+                <div class="summary">
+                    <h2>📋 Summary</h2>
+                    <p>Quote request from <strong>${data.companyName || data.contactPerson || 'a potential client'}</strong> for AI solutions to boost company revenue, productivity, and workflow.</p>
+                </div>
+                
+                <div class="client-info">
+                    <h2>👤 Client Information</h2>
+                    
+                    <div class="field">
+                        <span class="label">📧 Email:</span>
+                        <span class="value">${data.fromemail || 'Not provided'}</span>
+                    </div>
+                    
+                    <div class="field">
+                        <span class="label">👨‍💼 Contact Person:</span>
+                        <span class="value">${data.contactPerson || 'Not provided'}</span>
+                    </div>
+                    
+                    <div class="field">
+                        <span class="label">🏢 Company:</span>
+                        <span class="value">${data.companyName || 'Not provided'}</span>
+                    </div>
+                    
+                    <div class="field">
+                        <span class="label">🌐 Website:</span>
+                        <span class="value">${data.companyWebsite || 'Not provided'}</span>
+                    </div>
+                    
+                    <div class="field">
+                        <span class="label">📱 Phone:</span>
+                        <span class="value">${data.phoneNumber || 'Not provided'}</span>
+                    </div>
+                    
+                    <div class="field">
+                        <span class="label">🏷️ Brand:</span>
+                        <span class="value">${data.brandName || 'Not provided'}</span>
+                    </div>
+                    
+                    <div class="field">
+                        <span class="label">💰 Budget:</span>
+                        <span class="value">${data.budget || 'Not provided'}</span>
+                    </div>
+                    
+                    <div class="field">
+                        <span class="label">⏰ Urgency:</span>
+                        <span class="value">${data.urgency || 'Not provided'}</span>
+                    </div>
+                </div>
+                
+                <div class="client-info">
+                    <h2>📝 Project Details</h2>
+                    
+                    <div class="field">
+                        <span class="label">✅ Requirements:</span>
+                        <div class="value" style="margin-top: 5px; white-space: pre-wrap;">${data.requirements || 'Not provided'}</div>
+                    </div>
+                    
+                    <div class="field">
+                        <span class="label">❓ Questions:</span>
+                        <div class="value" style="margin-top: 5px; white-space: pre-wrap;">${data.questions || 'Not provided'}</div>
+                    </div>
+                    
+                    <div class="field">
+                        <span class="label">ℹ️ Additional Info:</span>
+                        <div class="value" style="margin-top: 5px; white-space: pre-wrap;">${data.additionalInfo || 'Not provided'}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>This is an automated email from your AI Services quote request system.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
 }
 
-// Function to save summary to file
-async function saveSummaryToFile(summary: string, submissionId: string): Promise<void> {
+// Function to send email notification
+async function sendEmailNotification(data: any, submissionId: string): Promise<void> {
   try {
-    const summariesDir = join(process.cwd(), 'src', 'app', 'api', 'form', 'summaries');
+    const emailHTML = createEmailHTML(data, submissionId);
     
-    // Ensure directory exists
-    await mkdir(summariesDir, { recursive: true });
+    await resend.emails.send({
+      from: 'AI Services <onboarding@resend.dev>', // Using Resend's default domain
+      to: ['mobiletechspecialists@gmail.com'],
+      subject: `🚀 New AI Services Quote Request from ${data.companyName || data.contactPerson || 'Client'}`,
+      html: emailHTML,
+    });
     
-    const filename = `submission_${submissionId}_${Date.now()}.txt`;
-    const filepath = join(summariesDir, filename);
-    
-    await writeFile(filepath, summary, 'utf8');
-    console.log(`Summary saved to: ${filepath}`);
+    console.log(`Email notification sent for submission: ${submissionId}`);
   } catch (error) {
-    console.error('Error saving summary file:', error);
+    console.error('Error sending email notification:', error);
+    // Don't throw here - we don't want email failures to break form submission
   }
 }
 
@@ -69,9 +150,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create a simple summary
-    const summaryText = createSummary(body);
-    
     // Prepare data for database
     const dbData = {
       summary: `Quote request from ${body.companyName || body.contactPerson || 'customer'} for AI solutions`,
@@ -93,8 +171,8 @@ export async function POST(request: NextRequest) {
       data: dbData
     });
 
-    // Save summary to file
-    await saveSummaryToFile(summaryText, record.id);
+    // Send email notification
+    await sendEmailNotification(body, record.id);
 
     return NextResponse.json({
       success: true,
