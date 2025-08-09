@@ -1,36 +1,273 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Services Quote Request System
 
-## Getting Started
+A modern Next.js application that allows potential clients to request quotes for AI solutions to boost company revenue, productivity, and workflow. The system includes form validation, database storage, and automated email notifications.
 
-First, run the development server:
+## 🚀 Features
+
+- **Professional Quote Request Form** - User-friendly interface with validation
+- **Database Integration** - Prisma ORM with PostgreSQL for data persistence
+- **Email Notifications** - Automated HTML email alerts via Resend API
+- **Real-time Validation** - Form validation using React Hook Form + Zod
+- **Responsive Design** - Modern UI with Tailwind CSS
+- **TypeScript** - Full type safety throughout the application
+
+## 🛠️ Tech Stack
+
+- **Framework**: Next.js 15 (App Router)
+- **Language**: TypeScript
+- **Database**: PostgreSQL with Prisma ORM
+- **Email Service**: Resend API
+- **Form Handling**: React Hook Form + Zod validation
+- **Styling**: Tailwind CSS
+- **HTTP Client**: Axios
+
+## 📋 Prerequisites
+
+Before you begin, ensure you have:
+
+- Node.js 18+ installed
+- PostgreSQL database (or use Prisma Postgres)
+- Resend account for email services
+- Git for cloning the repository
+
+## 🔧 Installation & Setup
+
+### 1. Clone the Repository
+```bash
+git clone <repository-url>
+cd my-next-app
+```
+
+### 2. Install Dependencies
+```bash
+npm install
+```
+
+### 3. Environment Configuration
+
+Create a `.env` file in the root directory with the following variables:
+
+```env
+# OpenAI API (for future AI features)
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Database Connection
+DATABASE_URL="your_postgresql_connection_string"
+
+# Email Service
+RESEND_API_KEY=your_resend_api_key_here
+```
+
+### 4. Database Setup
+
+Generate Prisma client and set up the database:
+
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Push database schema (creates tables)
+npx prisma db push
+
+# Optional: View data in Prisma Studio
+npx prisma studio
+```
+
+### 5. Start Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🔑 API Keys Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Resend API Configuration
 
-## Learn More
+1. **Create Resend Account**:
+   - Go to [https://resend.com/](https://resend.com/)
+   - Sign up for a free account
+   - Verify your email address
 
-To learn more about Next.js, take a look at the following resources:
+2. **Get API Key**:
+   - Navigate to the Resend dashboard
+   - Go to "API Keys" section
+   - Create a new API key
+   - Copy the key (starts with `re_`)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. **Add to Environment**:
+   ```env
+   RESEND_API_KEY=re_your_actual_api_key_here
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. **Email Configuration**:
+   - Default sender: `onboarding@resend.dev` (works immediately)
+   - Recipient: `mobiletechspecialists@gmail.com` (hardcoded)
+   - For custom domains: verify your domain in Resend dashboard
 
-## Deploy on Vercel
+### Database Configuration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+#### Option 1: Prisma Postgres (Recommended)
+```bash
+# Login to Prisma
+npx prisma platform login
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Create database
+npx prisma postgres create my-ai-services-db
+```
+
+#### Option 2: Custom PostgreSQL
+Update `DATABASE_URL` with your PostgreSQL connection string:
+```env
+DATABASE_URL="postgresql://username:password@localhost:5432/database_name"
+```
+
+## 📁 Project Structure
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   └── form/
+│   │       └── submit/
+│   │           └── route.ts          # Form submission API endpoint
+│   ├── components/
+│   │   └── form.tsx                  # Main quote request form
+│   ├── lib/
+│   │   └── prisma.ts                 # Prisma client configuration
+│   ├── globals.css                   # Global styles
+│   ├── layout.tsx                    # Root layout
+│   └── page.tsx                      # Home page
+├── agents/
+│   └── system-prompts/
+│       └── submit-form.ts            # AI prompt templates (future use)
+prisma/
+└── schema.prisma                     # Database schema
+```
+
+## 🗄️ Database Schema
+
+The application uses a `FormSubmission` model with the following fields:
+
+```prisma
+model FormSubmission {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  summary        String   // Auto-generated summary
+  fromemail      String   // Client email (required)
+  brandName      String?  // Client's brand name
+  companyName    String?  // Company name
+  companyWebsite String?  // Company website
+  contactPerson  String?  // Contact person name
+  phoneNumber    String?  // Phone number
+  budget         String?  // Project budget
+  urgency        String?  // Urgency level
+  questions      String?  // Client questions
+  requirements   String?  // Project requirements
+  additionalInfo String?  // Additional information
+}
+```
+
+## 📧 Email System
+
+### How It Works
+
+1. **Form Submission**: User fills out the quote request form
+2. **Validation**: Data is validated using Zod schemas
+3. **Database Storage**: Form data is saved to PostgreSQL
+4. **Email Notification**: HTML email sent to `mobiletechspecialists@gmail.com`
+
+### Email Template Features
+
+- **Professional HTML Design** with modern styling
+- **Organized Sections**:
+  - Header with submission ID and timestamp
+  - Summary of the request
+  - Complete client information
+  - Project details and requirements
+- **Responsive Design** that works on all devices
+- **Emoji Icons** for visual appeal
+
+### Customizing Email Recipients
+
+To change the recipient email, update the `sendEmailNotification` function in:
+`src/app/api/form/submit/route.ts`
+
+```typescript
+to: ['your-new-email@example.com'],
+```
+
+## 🚦 Usage
+
+### Running the Application
+
+1. **Development**:
+   ```bash
+   npm run dev
+   ```
+
+2. **Production Build**:
+   ```bash
+   npm run build
+   npm start
+   ```
+
+3. **Linting**:
+   ```bash
+   npm run lint
+   ```
+
+### Testing the Form
+
+1. Navigate to `http://localhost:3000`
+2. Fill out the quote request form
+3. Submit the form
+4. Check the recipient email for the notification
+5. Verify data in database (use `npx prisma studio`)
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+1. **Resend Email Not Sending**:
+   - Verify API key is correct in `.env`
+   - Check sender email domain is verified
+   - Review console logs for error messages
+
+2. **Database Connection Issues**:
+   - Ensure PostgreSQL is running
+   - Verify `DATABASE_URL` format is correct
+   - Run `npx prisma db push` to sync schema
+
+3. **Form Validation Errors**:
+   - Check browser console for detailed error messages
+   - Ensure all required fields are properly filled
+   - Verify email format is valid
+
+### Development Tips
+
+- Use `npx prisma studio` to view and manage database data
+- Check browser Network tab for API request/response details
+- Monitor console logs for debugging information
+- Test email delivery in Resend dashboard
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📄 License
+
+This project is private and proprietary.
+
+## 📞 Support
+
+For questions or issues, contact the development team or check the project documentation.
+
+---
+
+**Last Updated**: August 2025
